@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zug-Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .spin { animation: spin 1s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #1e293b; }
+    ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+
+  <!-- ── Header ──────────────────────────────────────── -->
+  <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+    <div>
+      <h1 class="text-2xl sm:text-3xl font-bold flex items-center gap-3">
+        🚄 <span>Zug-Tracker</span>
+      </h1>
+      <p class="text-slate-400 text-sm mt-1">Deutsche Bahn · Verspätungsmonitor</p>
+    </div>
+    <div class="flex items-center gap-3 flex-wrap">
+      <input type="date" id="date-picker"
+        class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm
+               focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer" />
+      <button onclick="manualRefresh()" id="refresh-btn"
+        class="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50
+               px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+        <span id="refresh-icon">↻</span>
+        <span>Aktualisieren</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ── Status bar ──────────────────────────────────── -->
+  <div id="status-bar" class="hidden mb-6 px-4 py-3 rounded-lg text-sm flex items-center gap-2"></div>
+
+  <!-- ── Top 5 Verspätungen ──────────────────────────── -->
+  <section class="mb-10">
+    <h2 class="text-base font-semibold text-slate-300 mb-4 flex items-center gap-2">
+      <span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span>
+      Top 5 Verspätungen heute
+    </h2>
+    <div id="top-delays" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div class="col-span-full flex justify-center items-center py-12 text-slate-600">
+        <span class="spin mr-2">↻</span> Daten werden geladen…
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Alle Verbindungen ───────────────────────────── -->
+  <section>
+    <h2 class="text-base font-semibold text-slate-300 mb-4 flex items-center gap-2">
+      <span class="w-2 h-2 rounded-full bg-slate-500 inline-block"></span>
+      Alle Verbindungen
+    </h2>
+    <div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-slate-800 bg-slate-800/60 text-left">
+              <th class="px-4 py-3 text-slate-400 font-medium">Zug</th>
+              <th class="px-4 py-3 text-slate-400 font-medium">Strecke</th>
+              <th class="px-4 py-3 text-slate-400 font-medium">Abf. Plan</th>
+              <th class="px-4 py-3 text-slate-400 font-medium">Ank. Plan</th>
+              <th class="px-4 py-3 text-slate-400 font-medium">Ist-Ankunft</th>
+              <th class="px-4 py-3 text-slate-400 font-medium">Verspätung</th>
+            </tr>
+          </thead>
+          <tbody id="all-trains">
+            <tr>
+              <td colspan="6" class="text-center text-slate-600 py-10">
+                <span class="spin mr-2">↻</span> Daten werden geladen…
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="text-xs text-slate-600 mt-2 text-right" id="last-updated"></p>
+  </section>
+
+</div>
+
+<script>
+  // ── helpers ────────────────────────────────────────────────────────────────
+
+  function fmtTime(iso) {
+    if (!iso) return '–';
+    try {
+      return new Date(iso).toLocaleTimeString('de-DE', {
+        hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin'
+      });
+    } catch { return iso; }
+  }
+
+  function delayLabel(min) {
+    if (min === null || min === undefined) return '–';
+    if (min <= 0) return 'Pünktlich';
+    return `+${min} min`;
+  }
+
+  function delayTextClass(min) {
+    if (min === null || min === undefined) return 'text-slate-500';
+    if (min <= 0)  return 'text-emerald-400 font-medium';
+    if (min <= 5)  return 'text-emerald-300 font-medium';
+    if (min <= 15) return 'text-amber-400 font-semibold';
+    return 'text-red-400 font-bold';
+  }
+
+  function delayBadgeClass(min) {
+    if (min === null || min === undefined)
+      return 'bg-slate-800 text-slate-500 border border-slate-700';
+    if (min <= 0)
+      return 'bg-emerald-950 text-emerald-400 border border-emerald-800';
+    if (min <= 5)
+      return 'bg-emerald-950/50 text-emerald-300 border border-emerald-900';
+    if (min <= 15)
+      return 'bg-amber-950 text-amber-400 border border-amber-800';
+    return 'bg-red-950 text-red-400 border border-red-800';
+  }
+
+  function delayCardBorder(min) {
+    if (min === null || min === undefined) return 'border-slate-800';
+    if (min <= 0)  return 'border-emerald-900';
+    if (min <= 5)  return 'border-emerald-900';
+    if (min <= 15) return 'border-amber-800';
+    return 'border-red-800';
+  }
+
+  // ── render: Top 5 cards ────────────────────────────────────────────────────
+
+  function renderTopDelays(delays) {
+    const el = document.getElementById('top-delays');
+
+    if (!delays || delays.length === 0) {
+      el.innerHTML = `
+        <div class="col-span-full bg-slate-900 border border-slate-800 rounded-xl
+                    py-10 text-center text-slate-500">
+          Noch keine Verspätungsdaten verfügbar für diesen Tag
+        </div>`;
+      return;
+    }
+
+    el.innerHTML = delays.map((d, i) => `
+      <div class="bg-slate-900 border ${delayCardBorder(d.delay_minutes)} rounded-xl p-4
+                  flex flex-col gap-3 hover:border-slate-600 transition-colors">
+
+        <div class="flex justify-between items-start">
+          <span class="text-xs font-bold text-slate-600">#${i + 1}</span>
+          <span class="text-xs px-2 py-0.5 rounded-full ${delayBadgeClass(d.delay_minutes)}">
+            ${delayLabel(d.delay_minutes)}
+          </span>
+        </div>
+
+        <div>
+          <div class="font-bold text-base">${d.train_name}</div>
+          <div class="text-xs text-slate-400 mt-0.5 leading-relaxed">${d.route}</div>
+        </div>
+
+        <div class="mt-auto pt-3 border-t border-slate-800 grid grid-cols-3 gap-1 text-xs">
+          <div>
+            <div class="text-slate-500 mb-0.5">Abf. Plan</div>
+            <div class="font-mono font-medium">${fmtTime(d.planned_departure)}</div>
+          </div>
+          <div>
+            <div class="text-slate-500 mb-0.5">Ank. Plan</div>
+            <div class="font-mono font-medium">${fmtTime(d.planned_arrival)}</div>
+          </div>
+          <div>
+            <div class="text-slate-500 mb-0.5">Ist-Ank.</div>
+            <div class="font-mono font-medium ${delayTextClass(d.delay_minutes)}">
+              ${fmtTime(d.actual_arrival) || '–'}
+            </div>
+          </div>
+        </div>
+
+      </div>
+    `).join('');
+  }
+
+  // ── render: table ──────────────────────────────────────────────────────────
+
+  function renderAllTrains(journeys) {
+    const tbody = document.getElementById('all-trains');
+
+    if (!journeys || journeys.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" class="text-center text-slate-500 py-10">
+            Keine Daten für diesen Tag
+          </td>
+        </tr>`;
+      return;
+    }
+
+    tbody.innerHTML = journeys.map(j => `
+      <tr class="border-b border-slate-800/40 hover:bg-slate-800/20 transition-colors">
+        <td class="px-4 py-3 font-semibold whitespace-nowrap">${j.train_name}</td>
+        <td class="px-4 py-3 text-slate-300 text-xs whitespace-nowrap">${j.route}</td>
+        <td class="px-4 py-3 font-mono text-slate-200">${fmtTime(j.planned_departure)}</td>
+        <td class="px-4 py-3 font-mono text-slate-200">${fmtTime(j.planned_arrival)}</td>
+        <td class="px-4 py-3 font-mono ${delayTextClass(j.delay_minutes)}">
+          ${fmtTime(j.actual_arrival) || '–'}
+        </td>
+        <td class="px-4 py-3">
+          <span class="px-2 py-0.5 rounded-full text-xs ${delayBadgeClass(j.delay_minutes)}">
+            ${delayLabel(j.delay_minutes)}
+          </span>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  // ── status bar ─────────────────────────────────────────────────────────────
+
+  function showStatus(msg, type = 'info') {
+    const bar = document.getElementById('status-bar');
+    const styles = {
+      info:    'bg-blue-950   border border-blue-800   text-blue-300',
+      success: 'bg-emerald-950 border border-emerald-800 text-emerald-300',
+      error:   'bg-red-950    border border-red-800    text-red-300',
+    };
+    bar.className = `mb-6 px-4 py-3 rounded-lg text-sm flex items-center gap-2 ${styles[type]}`;
+    bar.innerHTML = msg;
+    bar.classList.remove('hidden');
+  }
+  function hideStatus() {
+    document.getElementById('status-bar').classList.add('hidden');
+  }
+
+  // ── data loading ───────────────────────────────────────────────────────────
+
+  let currentDate = new Date().toISOString().split('T')[0];
+
+  async function loadData() {
+    try {
+      const [topRes, allRes] = await Promise.all([
+        fetch(`/api/top-delays?date=${currentDate}&limit=5`),
+        fetch(`/api/journeys?date=${currentDate}`),
+      ]);
+      const topData = await topRes.json();
+      const allData = await allRes.json();
+
+      renderTopDelays(topData.delays || []);
+      renderAllTrains(allData.journeys || []);
+
+      document.getElementById('last-updated').textContent =
+        'Zuletzt aktualisiert: ' + new Date().toLocaleTimeString('de-DE');
+    } catch (err) {
+      showStatus(`⚠ Fehler beim Laden: ${err.message}`, 'error');
+    }
+  }
+
+  async function manualRefresh() {
+    const btn  = document.getElementById('refresh-btn');
+    const icon = document.getElementById('refresh-icon');
+    btn.disabled = true;
+    icon.classList.add('spin');
+
+    showStatus('⏳ Daten werden von der DB API abgerufen…', 'info');
+
+    try {
+      await fetch('/api/refresh', { method: 'POST' });
+      await loadData();
+      showStatus('✓ Daten erfolgreich aktualisiert', 'success');
+      setTimeout(hideStatus, 3000);
+    } catch (err) {
+      showStatus(`⚠ Fehler beim Aktualisieren: ${err.message}`, 'error');
+    } finally {
+      btn.disabled = false;
+      icon.classList.remove('spin');
+    }
+  }
+
+  // ── date picker ────────────────────────────────────────────────────────────
+
+  const picker = document.getElementById('date-picker');
+  picker.value = currentDate;
+  picker.addEventListener('change', e => {
+    currentDate = e.target.value;
+    loadData();
+  });
+
+  // ── init ───────────────────────────────────────────────────────────────────
+
+  loadData();
+  setInterval(loadData, 5 * 60 * 1000); // silent reload every 5 min
+</script>
+
+</body>
+</html>
