@@ -7,7 +7,7 @@ from typing import List, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
-BASE_URL = "https://v5.db.transport.rest"
+BASE_URL = "https://v6.db.transport.rest"
 CET = ZoneInfo("Europe/Berlin")
 
 # (from_id, to_id, from_name, to_name)
