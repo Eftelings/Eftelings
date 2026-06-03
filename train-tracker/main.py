@@ -2,6 +2,9 @@ import logging
 from contextlib import asynccontextmanager
 from datetime import date as date_type
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI, Query
 from fastapi.responses import HTMLResponse
