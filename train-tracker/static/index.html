@@ -27,7 +27,7 @@
       </h1>
       <p class="text-slate-400 text-sm mt-1">Deutsche Bahn · Verspätungsmonitor</p>
     </div>
-    <div class="flex items-center gap-3 flex-wrap">
+    <div id="header-controls" class="flex items-center gap-3 flex-wrap">
       <input type="date" id="date-picker"
         class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm
                focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer" />
@@ -43,50 +43,84 @@
   <!-- ── Status bar ──────────────────────────────────── -->
   <div id="status-bar" class="hidden mb-6 px-4 py-3 rounded-lg text-sm flex items-center gap-2"></div>
 
-  <!-- ── Top 5 Verspätungen ──────────────────────────── -->
-  <section class="mb-10">
-    <h2 class="text-base font-semibold text-slate-300 mb-4 flex items-center gap-2">
-      <span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span>
-      Top 5 Verspätungen heute
-    </h2>
-    <div id="top-delays" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-      <div class="col-span-full flex justify-center items-center py-12 text-slate-600">
+  <!-- ── Tabs ────────────────────────────────────────── -->
+  <nav class="flex gap-1 mb-8 bg-slate-900 p-1 rounded-xl border border-slate-800 w-fit">
+    <button id="tab-btn-delays" onclick="switchTab('delays')"
+      class="px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-slate-700 text-white">
+      Verspätungen
+    </button>
+    <button id="tab-btn-fahrgastrechte" onclick="switchTab('fahrgastrechte')"
+      class="px-4 py-2 rounded-lg text-sm font-medium transition-colors text-slate-400 hover:text-slate-200">
+      ⚖️ Fahrgastrechte
+    </button>
+  </nav>
+
+  <!-- ── Panel: Verspätungen ─────────────────────────── -->
+  <div id="panel-delays">
+
+    <section class="mb-10">
+      <h2 class="text-base font-semibold text-slate-300 mb-4 flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span>
+        Top 5 Verspätungen heute
+      </h2>
+      <div id="top-delays" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div class="col-span-full flex justify-center items-center py-12 text-slate-600">
+          <span class="spin mr-2">↻</span> Daten werden geladen…
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="text-base font-semibold text-slate-300 mb-4 flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-slate-500 inline-block"></span>
+        Alle Verbindungen
+      </h2>
+      <div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-slate-800 bg-slate-800/60 text-left">
+                <th class="px-4 py-3 text-slate-400 font-medium">Zug</th>
+                <th class="px-4 py-3 text-slate-400 font-medium">Strecke</th>
+                <th class="px-4 py-3 text-slate-400 font-medium">Abf. Plan</th>
+                <th class="px-4 py-3 text-slate-400 font-medium">Ank. Plan</th>
+                <th class="px-4 py-3 text-slate-400 font-medium">Ist-Ankunft</th>
+                <th class="px-4 py-3 text-slate-400 font-medium">Verspätung</th>
+              </tr>
+            </thead>
+            <tbody id="all-trains">
+              <tr>
+                <td colspan="6" class="text-center text-slate-600 py-10">
+                  <span class="spin mr-2">↻</span> Daten werden geladen…
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <p class="text-xs text-slate-600 mt-2 text-right" id="last-updated"></p>
+    </section>
+
+  </div>
+
+  <!-- ── Panel: Fahrgastrechte ───────────────────────── -->
+  <div id="panel-fahrgastrechte" class="hidden">
+
+    <div class="mb-6 px-4 py-3 rounded-lg bg-blue-950 border border-blue-800 text-blue-300 text-sm">
+      ℹ️ Verspätungen über 60 Minuten (max. 2 pro Tag) — einreichbar auf
+      <a href="https://www.bahn.de/buchung/fahrgastrechte?einstiegtyp=BC100"
+         target="_blank" rel="noopener"
+         class="underline hover:text-blue-100">bahn.de/fahrgastrechte</a>.
+      Hake ab, sobald du den Antrag eingereicht hast.
+    </div>
+
+    <div id="fahrgastrechte-list">
+      <div class="flex justify-center py-12 text-slate-600">
         <span class="spin mr-2">↻</span> Daten werden geladen…
       </div>
     </div>
-  </section>
 
-  <!-- ── Alle Verbindungen ───────────────────────────── -->
-  <section>
-    <h2 class="text-base font-semibold text-slate-300 mb-4 flex items-center gap-2">
-      <span class="w-2 h-2 rounded-full bg-slate-500 inline-block"></span>
-      Alle Verbindungen
-    </h2>
-    <div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="border-b border-slate-800 bg-slate-800/60 text-left">
-              <th class="px-4 py-3 text-slate-400 font-medium">Zug</th>
-              <th class="px-4 py-3 text-slate-400 font-medium">Strecke</th>
-              <th class="px-4 py-3 text-slate-400 font-medium">Abf. Plan</th>
-              <th class="px-4 py-3 text-slate-400 font-medium">Ank. Plan</th>
-              <th class="px-4 py-3 text-slate-400 font-medium">Ist-Ankunft</th>
-              <th class="px-4 py-3 text-slate-400 font-medium">Verspätung</th>
-            </tr>
-          </thead>
-          <tbody id="all-trains">
-            <tr>
-              <td colspan="6" class="text-center text-slate-600 py-10">
-                <span class="spin mr-2">↻</span> Daten werden geladen…
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-    <p class="text-xs text-slate-600 mt-2 text-right" id="last-updated"></p>
-  </section>
+  </div>
 
 </div>
 
@@ -100,6 +134,12 @@
         hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin'
       });
     } catch { return iso; }
+  }
+
+  function fmtDate(isoDate) {
+    return new Date(isoDate + 'T12:00:00').toLocaleDateString('de-DE', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
   }
 
   function delayLabel(min) {
@@ -136,11 +176,24 @@
     return 'border-red-800';
   }
 
+  // ── tab switching ──────────────────────────────────────────────────────────
+
+  function switchTab(tab) {
+    ['delays', 'fahrgastrechte'].forEach(t => {
+      document.getElementById(`panel-${t}`).classList.toggle('hidden', t !== tab);
+      const btn = document.getElementById(`tab-btn-${t}`);
+      btn.classList.toggle('bg-slate-700', t === tab);
+      btn.classList.toggle('text-white', t === tab);
+      btn.classList.toggle('text-slate-400', t !== tab);
+    });
+    document.getElementById('header-controls').classList.toggle('hidden', tab === 'fahrgastrechte');
+    if (tab === 'fahrgastrechte') loadFahrgastrechte();
+  }
+
   // ── render: Top 5 cards ────────────────────────────────────────────────────
 
   function renderTopDelays(delays) {
     const el = document.getElementById('top-delays');
-
     if (!delays || delays.length === 0) {
       el.innerHTML = `
         <div class="col-span-full bg-slate-900 border border-slate-800 rounded-xl
@@ -149,23 +202,19 @@
         </div>`;
       return;
     }
-
     el.innerHTML = delays.map((d, i) => `
       <div class="bg-slate-900 border ${delayCardBorder(d.delay_minutes)} rounded-xl p-4
                   flex flex-col gap-3 hover:border-slate-600 transition-colors">
-
         <div class="flex justify-between items-start">
           <span class="text-xs font-bold text-slate-600">#${i + 1}</span>
           <span class="text-xs px-2 py-0.5 rounded-full ${delayBadgeClass(d.delay_minutes)}">
             ${delayLabel(d.delay_minutes)}
           </span>
         </div>
-
         <div>
           <div class="font-bold text-base">${d.train_name}</div>
           <div class="text-xs text-slate-400 mt-0.5 leading-relaxed">${d.route}</div>
         </div>
-
         <div class="mt-auto pt-3 border-t border-slate-800 grid grid-cols-3 gap-1 text-xs">
           <div>
             <div class="text-slate-500 mb-0.5">Abf. Plan</div>
@@ -182,16 +231,14 @@
             </div>
           </div>
         </div>
-
       </div>
     `).join('');
   }
 
-  // ── render: table ──────────────────────────────────────────────────────────
+  // ── render: All trains table ───────────────────────────────────────────────
 
   function renderAllTrains(journeys) {
     const tbody = document.getElementById('all-trains');
-
     if (!journeys || journeys.length === 0) {
       tbody.innerHTML = `
         <tr>
@@ -201,7 +248,6 @@
         </tr>`;
       return;
     }
-
     tbody.innerHTML = journeys.map(j => `
       <tr class="border-b border-slate-800/40 hover:bg-slate-800/20 transition-colors">
         <td class="px-4 py-3 font-semibold whitespace-nowrap">${j.train_name}</td>
@@ -220,6 +266,107 @@
     `).join('');
   }
 
+  // ── render: Fahrgastrechte ─────────────────────────────────────────────────
+
+  function renderFahrgastrechte(delays) {
+    const container = document.getElementById('fahrgastrechte-list');
+    if (!delays || delays.length === 0) {
+      container.innerHTML = `
+        <div class="bg-slate-900 border border-slate-800 rounded-xl py-12 text-center text-slate-500">
+          Noch keine Verspätungen über 60 Minuten erfasst
+        </div>`;
+      return;
+    }
+
+    const byDate = {};
+    delays.forEach(d => {
+      if (!byDate[d.date]) byDate[d.date] = [];
+      byDate[d.date].push(d);
+    });
+
+    container.innerHTML = Object.keys(byDate)
+      .sort((a, b) => b.localeCompare(a))
+      .map(date => `
+        <div class="mb-8">
+          <h3 class="text-sm font-semibold text-slate-400 mb-3 flex items-center gap-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-red-500 inline-block"></span>
+            ${fmtDate(date)}
+          </h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            ${byDate[date].map(d => fahrgastrechtCard(d)).join('')}
+          </div>
+        </div>
+      `).join('');
+  }
+
+  function fahrgastrechtCard(d) {
+    const submitted = !!d.submitted;
+    return `
+      <div class="bg-slate-900 border ${submitted ? 'border-emerald-900' : 'border-red-900'}
+                  rounded-xl p-4 flex flex-col gap-3 transition-all ${submitted ? 'opacity-60' : ''}">
+        <div class="flex justify-between items-start gap-2">
+          <div>
+            <div class="font-bold">${d.train_name}</div>
+            <div class="text-xs text-slate-400 mt-0.5">${d.route}</div>
+          </div>
+          <span class="shrink-0 text-xs px-2 py-0.5 rounded-full bg-red-950 text-red-400 border border-red-800 font-bold">
+            +${d.delay_minutes} min
+          </span>
+        </div>
+        <div class="grid grid-cols-3 gap-1 text-xs">
+          <div>
+            <div class="text-slate-500 mb-0.5">Abf. Plan</div>
+            <div class="font-mono font-medium">${fmtTime(d.planned_departure)}</div>
+          </div>
+          <div>
+            <div class="text-slate-500 mb-0.5">Ank. Plan</div>
+            <div class="font-mono font-medium">${fmtTime(d.planned_arrival)}</div>
+          </div>
+          <div>
+            <div class="text-slate-500 mb-0.5">Ist-Ankunft</div>
+            <div class="font-mono font-medium text-red-400">${fmtTime(d.actual_arrival) || '–'}</div>
+          </div>
+        </div>
+        <label class="flex items-center gap-2 cursor-pointer pt-3 border-t border-slate-800">
+          <input type="checkbox"
+                 ${submitted ? 'checked' : ''}
+                 onchange="toggleSubmitted(${d.id}, this.checked, this)"
+                 class="w-4 h-4 cursor-pointer accent-emerald-500" />
+          <span class="text-sm ${submitted ? 'text-emerald-400' : 'text-slate-400'}">
+            ${submitted ? 'Eingereicht ✓' : 'Eingereicht'}
+          </span>
+        </label>
+      </div>
+    `;
+  }
+
+  async function toggleSubmitted(id, checked, checkbox) {
+    try {
+      const res = await fetch(`/api/fahrgastrechte/${id}/submitted?submitted=${checked}`, {
+        method: 'POST'
+      });
+      if (!res.ok) throw new Error('Server error');
+      loadFahrgastrechte();
+    } catch (err) {
+      checkbox.checked = !checked;
+      showStatus(`⚠ Fehler: ${err.message}`, 'error');
+    }
+  }
+
+  async function loadFahrgastrechte() {
+    document.getElementById('fahrgastrechte-list').innerHTML = `
+      <div class="flex justify-center py-12 text-slate-600">
+        <span class="spin mr-2">↻</span> Daten werden geladen…
+      </div>`;
+    try {
+      const res = await fetch('/api/fahrgastrechte');
+      const data = await res.json();
+      renderFahrgastrechte(data.delays || []);
+    } catch (err) {
+      showStatus(`⚠ Fehler beim Laden: ${err.message}`, 'error');
+    }
+  }
+
   // ── status bar ─────────────────────────────────────────────────────────────
 
   function showStatus(msg, type = 'info') {
@@ -233,6 +380,7 @@
     bar.innerHTML = msg;
     bar.classList.remove('hidden');
   }
+
   function hideStatus() {
     document.getElementById('status-bar').classList.add('hidden');
   }
@@ -249,10 +397,8 @@
       ]);
       const topData = await topRes.json();
       const allData = await allRes.json();
-
       renderTopDelays(topData.delays || []);
       renderAllTrains(allData.journeys || []);
-
       document.getElementById('last-updated').textContent =
         'Zuletzt aktualisiert: ' + new Date().toLocaleTimeString('de-DE');
     } catch (err) {
@@ -265,9 +411,7 @@
     const icon = document.getElementById('refresh-icon');
     btn.disabled = true;
     icon.classList.add('spin');
-
     showStatus('⏳ Daten werden von der DB API abgerufen…', 'info');
-
     try {
       await fetch('/api/refresh', { method: 'POST' });
       await loadData();
@@ -293,7 +437,7 @@
   // ── init ───────────────────────────────────────────────────────────────────
 
   loadData();
-  setInterval(loadData, 5 * 60 * 1000); // silent reload every 5 min
+  setInterval(loadData, 5 * 60 * 1000);
 </script>
 
 </body>

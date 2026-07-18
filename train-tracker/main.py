@@ -13,10 +13,12 @@ from fastapi.staticfiles import StaticFiles
 from database import (
     get_all_journeys,
     get_dates_with_data,
+    get_fahrgastrechte_delays,
     get_top_delays,
     has_data_for_today,
     init_db,
     save_journeys,
+    set_submitted,
 )
 from tracker import fetch_daily_journeys
 
@@ -86,4 +88,15 @@ async def api_dates():
 @app.post("/api/refresh")
 async def api_refresh():
     await run_fetch()
+    return {"status": "ok"}
+
+
+@app.get("/api/fahrgastrechte")
+async def api_fahrgastrechte():
+    return {"delays": get_fahrgastrechte_delays()}
+
+
+@app.post("/api/fahrgastrechte/{journey_id}/submitted")
+async def api_set_submitted(journey_id: int, submitted: bool = Query(default=True)):
+    set_submitted(journey_id, submitted)
     return {"status": "ok"}

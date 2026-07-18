@@ -45,10 +45,18 @@ def init_db():
                         actual_arrival TEXT,
                         delay_minutes INTEGER,
                         trip_id TEXT,
+                        submitted BOOLEAN DEFAULT FALSE,
                         last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         UNIQUE(date, trip_id)
                     )
                 """)
+            conn.commit()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("ALTER TABLE train_journeys ADD COLUMN submitted BOOLEAN DEFAULT FALSE")
+                conn.commit()
+            except Exception:
+                conn.rollback()
         else:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS train_journeys (
@@ -65,11 +73,17 @@ def init_db():
                     actual_arrival TEXT,
                     delay_minutes INTEGER,
                     trip_id TEXT,
+                    submitted INTEGER DEFAULT 0,
                     last_updated TEXT DEFAULT (datetime('now')),
                     UNIQUE(date, trip_id)
                 )
             """)
-        conn.commit()
+            conn.commit()
+            try:
+                conn.execute("ALTER TABLE train_journeys ADD COLUMN submitted INTEGER DEFAULT 0")
+                conn.commit()
+            except Exception:
+                pass
     finally:
         conn.close()
 
@@ -223,5 +237,50 @@ def get_dates_with_data() -> List[str]:
                 "SELECT DISTINCT date FROM train_journeys ORDER BY date DESC LIMIT 30"
             ).fetchall()
         return [r[0] for r in rows]
+    finally:
+        conn.close()
+
+
+def get_fahrgastrechte_delays() -> List[Dict]:
+    conn = get_conn()
+    try:
+        query = """
+            SELECT id, date, train_name, route, from_station, to_station,
+                   planned_departure, planned_arrival, actual_arrival,
+                   delay_minutes, trip_id, submitted
+            FROM (
+                SELECT *, ROW_NUMBER() OVER (PARTITION BY date ORDER BY delay_minutes DESC) AS rn
+                FROM train_journeys
+                WHERE delay_minutes >= 60
+            ) sub
+            WHERE rn <= 2
+            ORDER BY date DESC, delay_minutes DESC
+        """
+        if IS_POSTGRES:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute(query)
+                return [dict(r) for r in cur.fetchall()]
+        else:
+            rows = conn.execute(query).fetchall()
+            return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def set_submitted(journey_id: int, submitted: bool) -> None:
+    conn = get_conn()
+    try:
+        if IS_POSTGRES:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE train_journeys SET submitted = %s WHERE id = %s",
+                    (submitted, journey_id)
+                )
+        else:
+            conn.execute(
+                "UPDATE train_journeys SET submitted = ? WHERE id = ?",
+                (1 if submitted else 0, journey_id)
+            )
+        conn.commit()
     finally:
         conn.close()
