@@ -39,8 +39,8 @@ LONG_DISTANCE = {"ICE", "IC", "EC"}
 
 def _headers() -> dict:
     return {
-        "DB-Client-Id": os.environ["DB_CLIENT_ID"],
-        "DB-Api-Key":   os.environ["DB_API_KEY"],
+        "DB-Client-Id": os.environ["DB_CLIENT_ID"].strip(),
+        "DB-Api-Key":   os.environ["DB_API_KEY"].strip(),
         "Accept":       "application/xml",
     }
 
